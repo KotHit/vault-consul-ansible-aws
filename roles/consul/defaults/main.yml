@@ -1,0 +1,4 @@
+---
+consul_version: 1.2.0
+consul_dir: /opt/consul
+consul_user: ec2-user

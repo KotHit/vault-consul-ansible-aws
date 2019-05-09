@@ -1,0 +1,11 @@
+[Unit]
+Description=Vault secret management tool
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/vault server -config=/etc/vault/vault_server.hcl -log-level=debug
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target

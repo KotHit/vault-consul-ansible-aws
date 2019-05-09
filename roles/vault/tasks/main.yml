@@ -1,0 +1,75 @@
+---
+- name: Create vault directory
+  file:
+    path: "{{vault_dir}}"
+    state: directory
+    owner: "{{vault_user}}"
+    group: "{{vault_user}}"
+  register: vault_directory
+
+- name: Check vault version
+  shell: "vault version 2>&1 | grep {{vault_version}}"
+  failed_when: false
+  changed_when: false
+  register: vault_version_match
+
+- include: download.yml
+  when: vault_version_match.rc != 0
+
+- name: Unarchive vault archive
+  unarchive:
+    remote_src: yes
+    src: /tmp/vault.zip
+    dest: "{{vault_dir}}/"
+
+- name: Make vault user be owner
+  file:
+    path: "{{vault_dir}}"
+    state: directory
+    owner: "{{vault_user}}"
+    group: "{{vault_user}}"
+    recurse: yes
+
+- name: Adding vault command to user path
+  file:
+    src: "{{vault_dir}}/vault"
+    dest: /usr/bin/vault
+    state: link
+
+- name: Create directories for vault
+  file:
+    path: "/etc/vault"
+    state: directory
+
+- set_fact:
+    vault_server: inventory_hostname in groups['vault']
+
+- name: Create vault server config file
+  template:
+    src: vault_server.j2
+    dest: /etc/vault/vault_server.hcl
+
+- name: Create vault service file
+  template:
+    src: vault_service.j2
+    dest: /etc/systemd/system/vault.service
+
+- name: Restart system daemons
+  shell: systemctl daemon-reload
+  become: yes
+
+- name: Start service vault
+  service:
+    name: vault
+    state: restarted
+  become: yes
+
+- name: "Curl AWS to get this instance's private IP address"
+  command: curl http://169.254.169.254/latest/meta-data/local-ipv4
+  register: ec2_private_ip
+
+- debug: msg="Execute next commands {{item}}"
+  with_items:
+    - "export VAULT_ADDR=http://{{ec2_private_ip.stdout}}:8200"
+    - "vault operator init"
+    - "export VAULT_TOKEN=<ROOT_TOKEN>"

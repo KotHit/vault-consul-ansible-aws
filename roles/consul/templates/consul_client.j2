@@ -1,0 +1,23 @@
+{
+  "server": false,
+  "datacenter": "Us-Central",
+  "data_dir": "/var/consul",
+  "bind_addr": {% for host in groups['vault'] %}"{{ hostvars[host].ansible_default_ipv4.address }}"{% endfor %},
+  "client_addr": "127.0.0.1",
+  "domain": "consul",
+  "enable_script_checks": true,
+  "dns_config": {
+      "enable_truncate": true,
+      "only_passing": true
+  },
+  "encrypt": "{{consul_keygen}}",
+  "retry_join": [
+    {% for host in groups['consul_nodes'] %}
+      "{{ hostvars[host].ansible_default_ipv4.address }}"{% if not loop.last %},{% endif %}
+
+       {% endfor %}
+  ],
+  "log_level": "DEBUG",
+  "enable_syslog": true,
+  "acl_enforce_version_8": false
+}

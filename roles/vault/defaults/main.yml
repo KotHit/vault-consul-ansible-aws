@@ -1,0 +1,4 @@
+---
+vault_version: 1.1.1
+vault_dir: /opt/vault
+vault_user: ec2-user

@@ -1,0 +1,14 @@
+listener "tcp" {
+  address          = "0.0.0.0:8200"
+  cluster_address  = "{% for host in groups['vault'] %}{{ hostvars[host].ansible_default_ipv4.address }}{% endfor %}:8201"
+  tls_disable      = "true"
+}
+
+storage "consul" {
+  address = "127.0.0.1:8500"
+  path    = "vault/"
+}
+
+api_addr = "http://{% for host in groups['vault'] %}{{ hostvars[host].ansible_default_ipv4.address }}{% endfor %}:8200"
+cluster_addr = "http://{% for host in groups['vault'] %}{{ hostvars[host].ansible_default_ipv4.address }}{% endfor %}:8201"
+ui = true

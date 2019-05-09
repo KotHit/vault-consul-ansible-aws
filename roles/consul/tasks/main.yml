@@ -1,0 +1,84 @@
+---
+- name: Create Consul directory
+  file:
+    path: "{{consul_dir}}"
+    state: directory
+    owner: "{{consul_user}}"
+    group: "{{consul_user}}"
+  register: consul_directory
+
+- name: Check consul version
+  shell: "consul version 2>&1 | grep {{consul_version}}"
+  failed_when: false
+  changed_when: false
+  register: consul_version_match
+
+- include: download.yml
+  when: consul_version_match.rc != 0
+
+- name: Unarchive Consul archive
+  unarchive:
+    remote_src: yes
+    src: /tmp/consul.zip
+    dest: "{{consul_dir}}/"
+
+- name: Make Consul user be owner
+  file:
+    path: "{{consul_dir}}"
+    state: directory
+    owner: "{{consul_user}}"
+    group: "{{consul_user}}"
+    recurse: yes
+
+- name: Adding Consul command to user path
+  file:
+    src: "{{consul_dir}}/consul"
+    dest: /usr/bin/consul
+    state: link
+
+- name: Create directories for consul
+  file:
+    path: "{{item}}"
+    state: directory
+  with_items:
+    - "/etc/consul.d/scripts"
+    - "/var/consul"
+
+- name: Get consul keygen
+  shell: consul keygen
+  register: consul_kg
+  when: inventory_hostname in groups['consul_server']
+
+- set_fact:
+    consul_keygen: "{{ hostvars[item]['consul_kg']['stdout'] }}"
+  with_items:
+    - "{{ groups['consul_server'] }}"
+
+- set_fact:
+    consul_server: inventory_hostname in groups['consul_server']
+
+- name: Create Consul server config file
+  template:
+    src: consul_server.j2
+    dest: /etc/consul.d/config.json
+  when: inventory_hostname in groups['consul_nodes']
+
+- name: Create Consul client config file
+  template:
+    src: consul_client.j2
+    dest: /etc/consul.d/config.json
+  when: inventory_hostname in groups['vault']
+
+- name: Create Consul service file
+  template:
+    src: consul_service.j2
+    dest: /etc/systemd/system/consul.service
+
+- name: Restart system daemons
+  shell: systemctl daemon-reload
+  become: yes
+
+- name: Start service consul
+  service:
+    name: consul
+    state: restarted

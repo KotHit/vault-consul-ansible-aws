@@ -1,0 +1,5 @@
+---
+- name: Download consul
+  get_url:
+    url: https://releases.hashicorp.com/consul/{{consul_version}}/consul_{{consul_version}}_linux_amd64.zip
+    dest: /tmp/consul.zip
